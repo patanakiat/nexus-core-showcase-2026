@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Hub | Developer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #050505;
+        }
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glow-border {
+            position: relative;
+        }
+        .glow-border::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple), var(--neon-blue));
+            background-size: 200% 200%;
+            z-index: -1;
+            border-radius: inherit;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            animation: gradient-flow 3s linear infinite;
+        }
+        .glow-border:hover::after {
+            opacity: 0.5;
+        }
+        @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 242, 255, 0.1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            pointer-events: none;
+            animation: scanline 6s linear infinite;
+        }
+        @keyframes scanline {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        .terminal-text {
+            font-family: 'Fira Code', monospace;
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-8 relative">
+    <div class="scanline"></div>
+    
+    <!-- Background Decor -->
+    <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full"></div>
+
+    <header class="max-w-7xl mx-auto mb-12 flex justify-between items-center relative z-20">
+        <div>
+            <h1 class="text-4xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+                NEXUS_CORE
+            </h1>
+            <p class="text-xs terminal-text text-gray-500 mt-1 uppercase tracking-widest">System Operational // v2.0.4</p>
+        </div>
+        <div class="flex gap-4">
+            <div class="glass px-4 py-2 rounded-full text-xs flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 pulse"></span>
+                ONLINE
+            </div>
+            <div class="glass px-4 py-2 rounded-full text-xs terminal-text">
+                10:42:01 UTC
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 relative z-20">
+        
+        <!-- Main Panel -->
+        <div class="md:col-span-2 space-y-6">
+            <!-- Hero Card -->
+            <div class="glass p-8 rounded-3xl glow-border">
+                <h2 class="text-2xl font-semibold mb-4">Welcome back, Developer</h2>
+                <p class="text-gray-400 max-w-lg mb-6 leading-relaxed">
+                    All subsystems are nominal. Your neural link is stable. Ready to initialize workspace protocols?
+                </p>
+                <div class="flex gap-4">
+                    <button class="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl transition-all font-medium text-sm border border-white/10">
+                        Launch IDE
+                    </button>
+                    <button class="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-6 py-3 rounded-xl transition-all font-medium text-sm border border-cyan-500/20">
+                        View Analytics
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid Items -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-colors group">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-4 text-blue-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Performance</h3>
+                    <p class="text-sm text-gray-500">System throughput is currently at 98.4% efficiency.</p>
+                </div>
+                <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-colors group">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-4 text-purple-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Security</h3>
+                    <p class="text-sm text-gray-500">End-to-end encryption active on all communication channels.</p>
+                </div>
+            </div>
+
+            <!-- Mock Terminal -->
+            <div class="bg-black/60 rounded-2xl overflow-hidden border border-white/5">
+                <div class="bg-white/5 px-4 py-2 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+                    <span class="text-[10px] terminal-text text-gray-500 ml-2 uppercase">bash — 80x24</span>
+                </div>
+                <div class="p-6 terminal-text text-sm space-y-2">
+                    <p class="text-gray-500">$ nexus-cli status</p>
+                    <p class="text-cyan-400">Fetching core metrics...</p>
+                    <p class="text-white">CPU: 14% | RAM: 2.4GB / 32GB | DISK: 45%</p>
+                    <p class="text-gray-500">$ nexus-cli logs --follow</p>
+                    <p class="text-green-400">[info] Incoming request from 192.168.1.42</p>
+                    <p class="text-green-400">[info] Authentication successful</p>
+                    <p class="text-yellow-400">[warn] Latency spike detected in EU-West-1</p>
+                    <p class="text-white">_</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Panel -->
+        <div class="space-y-6">
+            <div class="glass p-6 rounded-3xl">
+                <h3 class="text-lg font-semibold mb-6 flex items-center justify-between">
+                    System Health
+                    <span class="text-xs font-normal text-cyan-400 uppercase tracking-tighter">Live</span>
+                </h3>
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-gray-400 uppercase">Processor</span>
+                            <span class="text-white font-medium">32%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-cyan-500 rounded-full" style="width: 32%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-gray-400 uppercase">Memory</span>
+                            <span class="text-white font-medium">68%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-purple-500 rounded-full" style="width: 68%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-gray-400 uppercase">Network</span>
+                            <span class="text-white font-medium">12%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-green-500 rounded-full" style="width: 12%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass p-6 rounded-3xl">
+                <h3 class="text-lg font-semibold mb-4">Connections</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/20"></div>
+                        <div>
+                            <p class="text-sm font-medium">GitHub API</p>
+                            <p class="text-[10px] text-green-500 uppercase">Connected</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/20"></div>
+                        <div>
+                            <p class="text-sm font-medium">AWS S3 Cluster</p>
+                            <p class="text-[10px] text-green-500 uppercase">Connected</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20"></div>
+                        <div>
+                            <p class="text-sm font-medium">Database Node 4</p>
+                            <p class="text-[10px] text-red-500 uppercase">Sync Error</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-7xl mx-auto mt-12 py-8 border-t border-white/5 text-center">
+        <p class="text-xs text-gray-600 terminal-text">
+            © 2026 INTERACTION_CO_CA // ALL RIGHTS RESERVED
+        </p>
+    </footer>
+</body>
+</html>
