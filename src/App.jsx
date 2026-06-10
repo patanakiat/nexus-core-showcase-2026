@@ -1,202 +1,369 @@
-import React, { useState, useEffect } from 'react';
-import { Terminal, Activity, Shield, Cpu, HardDrive, Globe, Zap, Github } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Terminal, 
+  Shield, 
+  Activity, 
+  Zap, 
+  Lock, 
+  Unlock, 
+  Volume2, 
+  VolumeX, 
+  Cpu, 
+  Database, 
+  Globe, 
+  AlertTriangle 
+} from 'lucide-react';
 
-const StatWidget = ({ label, value, progress, color }) => (
-  <div className="glass p-5 rounded-2xl">
-    <div className="flex justify-between text-xs mb-2">
-      <span className="text-gray-400 uppercase tracking-wider">{label}</span>
-      <span className="text-white font-mono">{value}</span>
-    </div>
-    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-      <div 
-        className={`h-full transition-all duration-1000 ease-out ${color}`} 
-        style={{ width: `${progress}%` }}
-      ></div>
-    </div>
-  </div>
-);
+const MatrixBackground = () => {
+  const canvasRef = useRef(null);
 
-function App() {
-  const [logs, setLogs] = useState([
-    { type: 'cmd', text: 'nexus-core --init' },
-    { type: 'info', text: 'Initializing neural bridge...' },
-    { type: 'success', text: 'Bridge established at 440ms' }
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const columns = Math.floor(canvas.width / 20);
+    const drops = new Array(columns).fill(1);
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ';
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.fillStyle = '#0f0';
+      ctx.font = '15px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars.charAt(Math.floor(Math.random() * chars.length));
+        ctx.fillText(text, i * 20, drops[i] * 20);
+
+        if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 z-0 opacity-20 pointer-events-none" />;
+};
+
+const App = () => {
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [terminalLines, setTerminalLines] = useState([
+    { text: 'NEXUS_CORE v4.0.2 INITIALIZED...', type: 'info' },
+    { text: 'SECURE NEURAL LINK ESTABLISHED.', type: 'info' },
+    { text: 'TYPE "help" TO SEE AVAILABLE COMMANDS.', type: 'system' }
   ]);
-  const [metrics, setMetrics] = useState({ cpu: 24, ram: 42, net: 12 });
+  const [input, setInput] = useState('');
+  const [metrics, setMetrics] = useState({ cpu: 12, mem: 45, net: 8, threat: 2 });
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptProgress, setDecryptProgress] = useState(0);
+  const terminalEndRef = useRef(null);
+  const audioCtx = useRef(null);
+
+  useEffect(() => {
+    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [terminalLines]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMetrics({
-        cpu: Math.floor(Math.random() * (45 - 20) + 20),
-        ram: Math.floor(Math.random() * (70 - 60) + 60),
-        net: Math.floor(Math.random() * (30 - 5) + 5)
-      });
-      
-      const newLogs = [
-        '[info] Routing traffic via encrypted node-' + Math.floor(Math.random() * 999),
-        '[warn] Minor latency spike in sector 7G',
-        '[success] Data packet sync complete'
-      ];
-      setLogs(prev => [...prev.slice(-10), { type: 'info', text: newLogs[Math.floor(Math.random() * newLogs.length)] }]);
-    }, 3000);
+      setMetrics(prev => ({
+        cpu: Math.min(100, Math.max(5, prev.cpu + (Math.random() * 10 - 5))),
+        mem: Math.min(100, Math.max(20, prev.mem + (Math.random() * 4 - 2))),
+        net: Math.min(100, Math.max(1, prev.net + (Math.random() * 20 - 10))),
+        threat: Math.max(0, Math.min(100, prev.threat + (Math.random() > 0.9 ? 1 : -0.5)))
+      }));
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="min-h-screen p-4 md:p-8 relative">
-      <div className="scanline"></div>
-      
-      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full -z-10"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 blur-[120px] rounded-full -z-10"></div>
+  const playSound = (freq, type = 'sine', duration = 0.1) => {
+    if (!audioEnabled) return;
+    if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const osc = audioCtx.current.createOscillator();
+    const gain = audioCtx.current.createGain();
+    
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.current.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.current.currentTime + duration);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.current.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.current.currentTime + duration);
+  };
 
-      <header className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-            NEXUS_CORE
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-[0.2em]">Operational // v2.4.0-Stable</p>
+  const handleCommand = (e) => {
+    if (e.key === 'Enter') {
+      const cmd = input.toLowerCase().trim();
+      const newLines = [...terminalLines, { text: `> ${input}`, type: 'user' }];
+      playSound(440, 'square', 0.05);
+
+      switch (cmd) {
+        case 'help':
+          newLines.push({ text: 'AVAILABLE COMMANDS: scan, decrypt, status, overload, clear, help', type: 'system' });
+          break;
+        case 'scan':
+          newLines.push({ text: 'SCANNING NETWORK FOR VULNERABILITIES...', type: 'info' });
+          setTimeout(() => setTerminalLines(prev => [...prev, { text: 'SCAN COMPLETE: 0 NEW THREATS DETECTED.', type: 'success' }]), 1000);
+          break;
+        case 'decrypt':
+          if (!isDecrypting) startDecryption();
+          newLines.push({ text: 'INITIALIZING DECRYPTION PROTOCOL...', type: 'warning' });
+          break;
+        case 'status':
+          newLines.push({ text: `CPU: ${metrics.cpu.toFixed(1)}% | MEM: ${metrics.mem.toFixed(1)}% | THREAT: ${metrics.threat.toFixed(1)}%`, type: 'info' });
+          break;
+        case 'overload':
+          playSound(110, 'sawtooth', 0.5);
+          newLines.push({ text: 'CRITICAL ERROR: SYSTEM OVERLOAD INITIATED', type: 'error' });
+          break;
+        case 'clear':
+          setTerminalLines([]);
+          setInput('');
+          return;
+        default:
+          newLines.push({ text: `COMMAND NOT FOUND: ${cmd}`, type: 'error' });
+      }
+
+      setTerminalLines(newLines);
+      setInput('');
+    }
+  };
+
+  const startDecryption = () => {
+    setIsDecrypting(true);
+    setDecryptProgress(0);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress >= 100) {
+        progress = 100;
+        setIsDecrypting(false);
+        setTerminalLines(prev => [...prev, { text: 'DECRYPTION SUCCESSFUL. CORE UNLOCKED.', type: 'success' }]);
+        playSound(880, 'sine', 0.3);
+        clearInterval(interval);
+      }
+      setDecryptProgress(progress);
+      playSound(200 + progress * 5, 'sine', 0.05);
+    }, 200);
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-emerald-500 font-mono relative overflow-hidden selection:bg-emerald-900 selection:text-emerald-200">
+      <MatrixBackground />
+      
+      {/* HUD Scanline Effect */}
+      <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_4px,3px_100%] opacity-30"></div>
+      
+      {/* Header */}
+      <header className="relative z-10 p-6 flex justify-between items-center border-b border-emerald-900/50 backdrop-blur-md bg-black/40">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-emerald-500/10 rounded border border-emerald-500/50 flex items-center justify-center animate-pulse">
+            <Zap className="w-6 h-6 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]">NEXUS_CORE</h1>
+            <p className="text-[10px] opacity-60 tracking-[0.3em]">SECURE SECTOR 7G // NODE_ID: 0x8842</p>
           </div>
         </div>
         
-        <div className="flex gap-3">
-          <div className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-mono">
-            <Zap size={14} className="text-yellow-400" />
-            44ms
-          </div>
-          <div className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-mono">
-            <Github size={14} />
-            v2.4.0
-          </div>
-        </div>
+        <button 
+          onClick={() => setAudioEnabled(!audioEnabled)}
+          className={`p-3 rounded-full transition-all border ${audioEnabled ? 'border-emerald-500 bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-emerald-900 bg-black/40'}`}
+        >
+          {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+        </button>
       </header>
 
-      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="glass p-8 rounded-3xl relative overflow-hidden group">
-            <div className="relative z-10">
-              <h2 className="text-2xl font-semibold mb-2">System Status: Optimal</h2>
-              <p className="text-gray-400 max-w-md text-sm leading-relaxed mb-6">
-                Welcome to the Nexus Core management interface. All peripheral nodes are currently synchronized with the primary uplink.
-              </p>
-              <div className="flex gap-4">
-                <button className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2.5 rounded-xl text-sm font-bold transition-all transform hover:scale-105">
-                  Deploy Update
-                </button>
-                <button className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-2.5 rounded-xl text-sm font-medium transition-all">
-                  System Audit
-                </button>
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 p-8 text-cyan-500/10 group-hover:text-cyan-500/20 transition-colors">
-              <Activity size={120} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass p-6 rounded-2xl group hover:border-cyan-500/30 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-4">
-                <Shield size={20} />
-              </div>
-              <h3 className="font-semibold mb-1 text-sm text-gray-200">Security Protocol</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">Layer 7 firewall active. No intrusions detected in the last 72 hours.</p>
-            </div>
-            <div className="glass p-6 rounded-2xl group hover:border-purple-500/30 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 mb-4">
-                <Globe size={20} />
-              </div>
-              <h3 className="font-semibold mb-1 text-sm text-gray-200">Global CDN</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">Static assets cached across 14 edge locations. Global latency avg: 18ms.</p>
-            </div>
-          </div>
-
-          {/* Terminal */}
-          <div className="bg-black/40 rounded-2xl border border-white/5 overflow-hidden font-mono shadow-2xl">
-            <div className="bg-white/5 px-4 py-2 border-b border-white/5 flex items-center justify-between">
-              <div className="flex gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500/40"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40"></div>
-              </div>
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                <Terminal size={12} /> nexus-cli
+      <main className="relative z-10 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+        
+        {/* Left Column - Metrics */}
+        <div className="lg:col-span-3 space-y-6">
+          <MetricCard icon={<Cpu />} label="PROCESSOR LOAD" value={metrics.cpu} color="emerald" />
+          <MetricCard icon={<Database />} label="MEMORY USAGE" value={metrics.mem} color="blue" />
+          <MetricCard icon={<Globe />} label="BANDWIDTH" value={metrics.net} color="purple" />
+          <div className={`p-4 rounded-xl border transition-all duration-500 ${metrics.threat > 10 ? 'border-red-500/50 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-emerald-900/50 bg-black/40'}`}>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs tracking-widest flex items-center gap-2">
+                <AlertTriangle size={14} className={metrics.threat > 10 ? 'animate-bounce' : ''} />
+                THREAT_LEVEL
+              </span>
+              <span className={`text-xl font-bold ${metrics.threat > 10 ? 'text-red-500' : 'text-emerald-500'}`}>
+                {metrics.threat.toFixed(1)}%
               </span>
             </div>
-            <div className="p-6 text-xs space-y-2 h-48 overflow-y-auto scrollbar-hide">
-              {logs.map((log, i) => (
-                <div key={i} className="flex gap-3">
-                  <span className="text-gray-600">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                  <span className={
-                    log.type === 'cmd' ? 'text-cyan-400' : 
-                    log.type === 'success' ? 'text-green-400' : 
-                    log.type === 'warn' ? 'text-yellow-400' : 'text-gray-300'
-                  }>
-                    {log.type === 'cmd' && '$ '}{log.text}
-                  </span>
-                </div>
-              ))}
-              <div className="flex gap-2 animate-pulse">
-                <span className="text-gray-600">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                <span className="text-white">_</span>
-              </div>
+            <div className="h-1 bg-black/60 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${metrics.threat > 10 ? 'bg-red-500' : 'bg-emerald-500'}`} 
+                style={{ width: `${metrics.threat}%` }}
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="glass p-6 rounded-3xl">
-            <h3 className="text-sm font-semibold mb-6 flex items-center justify-between">
-              System Telemetry
-              <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 text-[10px] rounded uppercase">Live</span>
-            </h3>
-            <div className="space-y-6">
-              <StatWidget label="CPU Load" value={`${metrics.cpu}%`} progress={metrics.cpu} color="bg-cyan-500" />
-              <StatWidget label="Memory Usage" value={`${metrics.ram}%`} progress={metrics.ram} color="bg-purple-500" />
-              <StatWidget label="Uplink Speed" value={`${metrics.net} GB/s`} progress={metrics.net * 2} color="bg-green-500" />
-            </div>
+        {/* Center Column - Terminal */}
+        <div className="lg:col-span-6 flex flex-col h-[600px]">
+          <div className="flex-1 bg-black/60 backdrop-blur-xl border border-emerald-500/30 rounded-t-2xl p-6 overflow-y-auto terminal-scrollbar relative">
+             <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/20 animate-scan"></div>
+             <div className="space-y-1">
+               {terminalLines.map((line, i) => (
+                 <div key={i} className={`text-sm ${getTypeStyles(line.type)}`}>
+                   {line.text}
+                 </div>
+               ))}
+               <div ref={terminalEndRef} />
+             </div>
+          </div>
+          <div className="bg-emerald-500/5 border-x border-b border-emerald-500/30 rounded-b-2xl p-4 flex items-center gap-3">
+            <span className="text-emerald-400 font-bold tracking-tighter">root@nexus:~$</span>
+            <input 
+              autoFocus
+              type="text" 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleCommand}
+              className="bg-transparent border-none outline-none text-emerald-400 w-full caret-emerald-400"
+            />
+          </div>
+        </div>
+
+        {/* Right Column - Interactions */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="glass-panel p-6 rounded-2xl border border-emerald-500/20 bg-black/40 backdrop-blur-md relative overflow-hidden">
+             <h3 className="text-sm font-bold mb-4 tracking-widest flex items-center gap-2">
+               <Lock className="w-4 h-4" /> SECURE_STORAGE
+             </h3>
+             <div className="space-y-4">
+                <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg group hover:border-emerald-500/40 transition-all cursor-pointer">
+                   <p className="text-[10px] opacity-40 mb-1">FILE_ID: 0x22F</p>
+                   <p className="text-xs">ENCRYPTED_LOGS.DAT</p>
+                </div>
+                <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg group hover:border-emerald-500/40 transition-all cursor-pointer">
+                   <p className="text-[10px] opacity-40 mb-1">FILE_ID: 0x98A</p>
+                   <p className="text-xs">CORE_CONFIG_v2.JSON</p>
+                </div>
+             </div>
           </div>
 
-          <div className="glass p-6 rounded-3xl">
-            <h3 className="text-sm font-semibold mb-4">Core Infrastructure</h3>
-            <div className="space-y-4">
-              {[
-                { name: 'Primary DB', status: 'Online', icon: <HardDrive size={16}/>, color: 'text-green-500' },
-                { name: 'Auth Service', status: 'Online', icon: <Shield size={16}/>, color: 'text-green-500' },
-                { name: 'Legacy Node', status: 'Standby', icon: <Cpu size={16}/>, color: 'text-yellow-500' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="text-gray-400">{item.icon}</div>
-                    <span className="text-xs font-medium">{item.name}</span>
-                  </div>
-                  <span className={`text-[10px] uppercase font-bold ${item.color}`}>{item.status}</span>
-                </div>
-              ))}
+          <div className="glass-panel p-6 rounded-2xl border border-emerald-500/20 bg-black/40 backdrop-blur-md">
+            <h3 className="text-sm font-bold mb-4 tracking-widest flex items-center gap-2">
+              <Shield className="w-4 h-4" /> FIREWALL_BYPASS
+            </h3>
+            <div className="relative h-2 bg-emerald-900/30 rounded-full mb-4 overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-300"
+                style={{ width: `${decryptProgress}%` }}
+              />
             </div>
-          </div>
-          
-          <div className="glass p-6 rounded-3xl bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border-cyan-500/20">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">Neural Link</h3>
-            <p className="text-[11px] text-gray-400 leading-relaxed">
-              Your session is secured via quantum-resistant encryption. 
-            </p>
+            <button 
+              disabled={isDecrypting}
+              onClick={startDecryption}
+              className={`w-full py-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${isDecrypting ? 'opacity-50 cursor-not-allowed border-emerald-900' : 'border-emerald-500/50 hover:bg-emerald-500/10 active:scale-95'}`}
+            >
+              {isDecrypting ? (
+                <span className="flex items-center gap-2 animate-pulse">
+                  <Activity size={16} /> DECRYPTING... {Math.round(decryptProgress)}%
+                </span>
+              ) : (
+                <>
+                  <Unlock size={16} /> INITIALIZE_BYPASS
+                </>
+              )}
+            </button>
           </div>
         </div>
       </main>
 
-      <footer className="max-w-7xl mx-auto mt-12 py-8 border-t border-white/5 flex justify-between items-center text-[10px] font-mono text-gray-600">
-        <span>© 2026 INTERACTION_CO_CA</span>
-        <span className="hidden md:block text-gray-700">COORD: 37.7749° N, 122.4194° W</span>
-        <span className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500/40"></span>
-          ENCRYPTED_CONNECTION
-        </span>
+      <footer className="relative z-10 p-6 text-center opacity-30 text-[10px] tracking-[0.5em] mt-12">
+        ESTABLISHED 2026 // INTERACTION CO CA // NEURAL LINK STABLE
       </footer>
+
+      <style>{`
+        .glass-panel {
+          box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
+        }
+        .terminal-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .terminal-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.1);
+        }
+        .terminal-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(16, 185, 129, 0.2);
+          border-radius: 10px;
+        }
+        @keyframes scan {
+          0% { top: 0; opacity: 0; }
+          50% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        .animate-scan {
+          animation: scan 4s linear infinite;
+        }
+      `}</style>
     </div>
   );
-}
+};
+
+const MetricCard = ({ icon, label, value, color }) => {
+  const colors = {
+    emerald: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5',
+    blue: 'text-blue-500 border-blue-500/30 bg-blue-500/5',
+    purple: 'text-purple-500 border-purple-500/30 bg-purple-500/5',
+  };
+  
+  return (
+    <div className={`p-4 rounded-xl border backdrop-blur-md ${colors[color]}`}>
+      <div className="flex items-center gap-3 mb-3">
+        {React.cloneElement(icon, { size: 16, className: 'opacity-70' })}
+        <span className="text-[10px] tracking-widest font-bold opacity-60 uppercase">{label}</span>
+      </div>
+      <div className="flex items-end justify-between">
+        <span className="text-2xl font-bold tracking-tighter tabular-nums">{value.toFixed(1)}%</span>
+        <div className="flex gap-1 h-8 items-end pb-1">
+          {[...Array(5)].map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-1 rounded-sm transition-all duration-300 ${i/5 * 100 < value ? (color === 'emerald' ? 'bg-emerald-500' : color === 'blue' ? 'bg-blue-500' : 'bg-purple-500') : 'bg-white/5'}`}
+              style={{ height: `${20 + Math.random() * 80}%` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const getTypeStyles = (type) => {
+  switch (type) {
+    case 'user': return 'text-emerald-300 font-bold';
+    case 'info': return 'text-blue-400';
+    case 'system': return 'text-emerald-500 italic opacity-80';
+    case 'success': return 'text-emerald-400 font-bold brightness-125';
+    case 'warning': return 'text-yellow-500';
+    case 'error': return 'text-red-500 animate-pulse';
+    default: return 'text-emerald-500';
+  }
+};
 
 export default App;
